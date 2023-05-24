@@ -127,6 +127,9 @@ sd_remote_port = args.sd_remote_port if args.sd_remote_port else DEFAULT_REMOTE_
 sd_remote_ssl = args.sd_remote_ssl
 sd_remote_auth = args.sd_remote_auth
 
+# TODO: add option to argparser
+faster_whisper_model = DEFAULT_FASTER_WHISPER_MODEL
+
 modules = (
     args.enable_modules if args.enable_modules and len(args.enable_modules) > 0 else []
 )
@@ -247,6 +250,11 @@ if "chromadb" in modules:
     chromadb_embedder = SentenceTransformer(embedding_model)
     chromadb_embed_fn = chromadb_embedder.encode
 
+if "transcribe" in modules:
+    print("Initializing faster whisper")
+    from faster_whisper import WhisperModel
+    # FIXME: get the device and compute type from arguments
+    transcribe_model = WhisperModel(faster_whisper_model, device="cpu", compute_type="int8")
 
 # Flask init
 app = Flask(__name__)
@@ -393,6 +401,20 @@ def image_to_base64(image: Image, quality: int = 75) -> str:
     image.save(buffered, format="JPEG", quality=quality)
     img_str = base64.b64encode(buffered.getvalue()).decode("utf-8")
     return img_str
+
+
+def transcribe(audio, beam_size: int = 5):
+    segments, info = transcribe_model.transcribe(audio, beam_size=beam_size)
+    result = ""
+
+    for segment in segments:
+        result += segment.text
+
+    print(
+        "Transcription: ",
+        result,
+    )
+    return (result, info)
 
 
 @app.before_request
@@ -755,6 +777,19 @@ def chromadb_query():
     ]
 
     return jsonify(messages)
+
+
+@app.route("/api/transcribe", methods=["POST"])
+@require_module("transcribe")
+def transcribe_query():
+    data = request.get_json()
+    if "audio" not in data:
+        abort(400, '"audio" is required')
+    
+    audio = BytesIO(base64.b64decode(data['audio']))
+    result, info = transcribe(audio=audio)
+    gc.collect()
+    return jsonify({'result': result, 'info': info})
 
 
 if args.share:

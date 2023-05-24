@@ -13,6 +13,8 @@ DEFAULT_REMOTE_SD_HOST = "127.0.0.1"
 DEFAULT_REMOTE_SD_PORT = 7860
 SILERO_SAMPLES_PATH = "tts_samples"
 SILERO_SAMPLE_TEXT = "The quick brown fox jumps over the lazy dog"
+DEFAULT_FASTER_WHISPER_MODEL = "medium.en"
+
 # ALL_MODULES = ['caption', 'summarize', 'classify', 'keywords', 'prompt', 'sd']
 DEFAULT_SUMMARIZE_PARAMS = {
     "temperature": 1.0,
